@@ -1,5 +1,7 @@
 # rational-attention
 
+![Scheduler on one route](docs/animation.gif)
+
 Budgeted camera attention for a mobile robot with three cameras (front, left, right) and one person detector.
 Every 0.1 s the scheduler decides which camera images the detector processes, in one batched call or in separate
 calls, so that the pedestrians the robot may run into stay well tracked while the average compute spent stays at a
@@ -70,9 +72,8 @@ units/s for every cost table, and also 2.5, 3, 4, 6 and 7 for the energy tables.
 python -m rational_attention animate --days data/days --day 20121202 --budget 5
 ```
 
-Opens a window that plays one route in real time (default: the route with the most conflicts on that day).
-
-![Scheduler on one route](docs/animation.gif)
+Opens a window that plays one route in real time (default: the route with the most conflicts on that day), as in the
+animation at the top.
 
 - Map: the robot (black triangle), its route and its three camera regions; a region lights up when the detector
   processes that camera. Pedestrians are dark grey when a camera can see them and light grey otherwise; an orange edge
