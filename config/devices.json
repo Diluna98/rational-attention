@@ -1,0 +1,46 @@
+{
+  "xavier-nx-10w": {
+    "name": "NVIDIA Jetson Xavier NX, 10 W mode",
+    "time": {
+      "one_camera_ms": 25.6,
+      "relative": [1.68, 2.22]
+    },
+    "energy": {
+      "one_camera_mj": 146.0,
+      "relative": [1.69, 2.24]
+    }
+  },
+  "xavier-nx-20w": {
+    "name": "NVIDIA Jetson Xavier NX, 20 W mode",
+    "time": {
+      "one_camera_ms": 20.9,
+      "relative": [1.91, 2.17]
+    },
+    "energy": {
+      "one_camera_mj": 103.0,
+      "relative": [1.62, 3.94]
+    }
+  },
+  "rtx-4050": {
+    "name": "NVIDIA RTX 4050 Laptop GPU",
+    "time": {
+      "one_camera_ms": 22.6,
+      "relative": [1.09, 1.33]
+    },
+    "energy": {
+      "one_camera_mj": 150.0,
+      "relative": [1.45, 1.87]
+    }
+  },
+  "i3-1315u": {
+    "name": "Intel Core i3-1315U, 10 W",
+    "time": {
+      "one_camera_ms": 93.1,
+      "relative": [1.71, 2.34]
+    },
+    "energy": {
+      "one_camera_mj": 309.0,
+      "relative": [1.73, 2.4]
+    }
+  }
+}
