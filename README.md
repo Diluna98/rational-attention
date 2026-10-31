@@ -1,11 +1,11 @@
 # rational-attention
 
-![Scheduler on one route](docs/animation.gif)
-
 Budgeted camera attention for a mobile robot with three cameras (front, left, right) and one person detector.
 Every 0.1 s the scheduler decides which camera images the detector processes, in one batched call or in separate
 calls, so that the pedestrians the robot may run into stay well tracked while the average compute spent stays at a
 budget.
+
+![Scheduler on one route](docs/animation.gif)
 
 ## Method
 
