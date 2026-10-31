@@ -3,6 +3,7 @@
   python -m rational_attention prepare   --atc DIR --days DIR
   python -m rational_attention calibrate --days DIR
   python -m rational_attention run       --days DIR --device xavier-nx-10w --cost energy --budget 5
+  python -m rational_attention animate   --days DIR --day 20121202 [--route N] [--save route.gif]
 """
 import argparse
 import json
@@ -102,6 +103,13 @@ def cmd_run(a):
     (out / f"{a.device}_{a.cost}.json").write_text(json.dumps(results, indent=2) + "\n")
 
 
+def cmd_animate(a):
+    from .animate import animate, record
+    day = a.day or sorted(day_list(("test",)))[0]
+    d = record(a.days, day, a.route, a.device, a.cost, a.budget)
+    animate(d, np.load(Path(a.days) / "map.npz")["occ"].astype(bool), a.save, a.speed, a.start, a.duration)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="python -m rational_attention")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -124,8 +132,19 @@ def main():
     p.add_argument("--cost", default="energy", choices=("time", "energy"))
     p.add_argument("--budget", nargs="+", type=float, default=[5.0])
     p.add_argument("--out", default="results")
+    p = sub.add_parser("animate", help="show the scheduler driving one route")
+    p.add_argument("--days", default="data/days")
+    p.add_argument("--day", help="a prepared day (default: the first test day)")
+    p.add_argument("--route", type=int, help="route index (default: the route with the most conflicts)")
+    p.add_argument("--device", default="xavier-nx-10w")
+    p.add_argument("--cost", default="energy", choices=("time", "energy"))
+    p.add_argument("--budget", type=float, default=5.0)
+    p.add_argument("--speed", type=float, default=1.0, help="playback speed (1 = real time)")
+    p.add_argument("--start", type=float, default=0.0, help="start time on the route (s)")
+    p.add_argument("--duration", type=float, help="length to show (s; default: to the end of the route)")
+    p.add_argument("--save", help="write a .gif or .mp4 (mp4 needs ffmpeg) instead of showing a window")
     a = ap.parse_args()
-    dict(download=cmd_download, prepare=cmd_prepare, calibrate=cmd_calibrate, run=cmd_run)[a.cmd](a)
+    dict(download=cmd_download, prepare=cmd_prepare, calibrate=cmd_calibrate, run=cmd_run, animate=cmd_animate)[a.cmd](a)
 
 
 if __name__ == "__main__":

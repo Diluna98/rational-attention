@@ -9,7 +9,7 @@ from numba import njit
 from .constants import (DT, H_EDGES, HALF_VIEW, L_EDGES, MASK, N_HORIZON, N_VIEWS, OPTION_SETS, PATH_LOOKAHEAD,
                         PRICE_STEP, RANGE_M, RATE_TAU)
 from .tracker import observe, predict
-from .value import bin_of, recall_at, tracked_value
+from .value import bin_of, pos_cov, recall_at, tracked_value
 
 
 @njit(cache=True)
@@ -38,6 +38,34 @@ def simulate(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x,
     """Drive one route with budget B (cost units per s) and start price mu0.
     Returns the tracking error of each conflict pedestrian at its deadline, the calls made of each kind, the mean and
     final log price, and the cost units spent."""
+    return _run(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x, ent_y, ent_zx, ent_zy, ent_d,
+                n_local, kd_of, n_conf, conf_idx_of, recall, h_tab, lam_a, lam_b, h_u, rbar, l_new, mu0,
+                np.zeros(0, np.int64), np.zeros((0, 6)), np.zeros(0), np.zeros((0, 0, 2)), np.zeros((0, 0, 3)))
+
+
+@njit(cache=True)
+def simulate_recorded(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x, ent_y, ent_zx, ent_zy, ent_d,
+                      n_local, kd_of, n_conf, conf_idx_of, recall, h_tab, lam_a, lam_b, h_u, rbar, l_new, mu0):
+    """simulate, also returning per tick: the chosen option set, the camera values (tracked part, then total), the log
+    price, and each track's predicted position and position covariance (s_xx, s_xy, s_yy; NaN if not tracked)."""
+    K = tick_off.size - 1
+    rec_set = np.zeros(K, np.int64)
+    rec_val = np.zeros((K, 6))
+    rec_price = np.zeros(K)
+    rec_pos = np.full((K, n_local, 2), np.nan)
+    rec_cov = np.full((K, n_local, 3), np.nan)
+    err, used, lp_mean, lp_end, spent = _run(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x, ent_y,
+                                             ent_zx, ent_zy, ent_d, n_local, kd_of, n_conf, conf_idx_of, recall, h_tab,
+                                             lam_a, lam_b, h_u, rbar, l_new, mu0, rec_set, rec_val, rec_price,
+                                             rec_pos, rec_cov)
+    return err, used, lp_mean, lp_end, spent, rec_set, rec_val, rec_price, rec_pos, rec_cov
+
+
+@njit(cache=True)
+def _run(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x, ent_y, ent_zx, ent_zy, ent_d, n_local,
+         kd_of, n_conf, conf_idx_of, recall, h_tab, lam_a, lam_b, h_u, rbar, l_new, mu0, rec_set, rec_val, rec_price,
+         rec_pos, rec_cov):
+    record = rec_set.size > 0
     K = tick_off.size - 1
     X = np.zeros((n_local, 4))
     Pm = np.zeros((n_local, 4, 4))
@@ -83,6 +111,8 @@ def simulate(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x,
             th = math.atan2(cy - y0, cx - x0)
             v = view_of(th, heading[k])
             V[v] += h * tracked_value(Pm[i], dt, d, th, q, recall_at(d, recall), rate[v])
+        if record:
+            rec_val[k, :3] = V
         # value of looking for pedestrians not yet tracked
         xn = math.log(1.0 + n_trk)
         for v in range(N_VIEWS):
@@ -94,6 +124,9 @@ def simulate(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x,
                 s = 0.5 + j
                 acc += h_u * math.exp(-(h_u + rate[v] * rbar) * s) * on_time[j]
             V[v] += m[v] * rbar * acc
+        if record:
+            rec_val[k, 3:] = V
+            rec_price[k] = logmu
         # best set of calls: value of the cameras covered minus price times cost
         mu = math.exp(logmu)
         for a in range(MASK.size):
@@ -111,6 +144,8 @@ def simulate(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x,
                     tot += net[a]
             if tot > best:
                 best, bi = tot, ci
+        if record:
+            rec_set[k] = bi
         spent = 0.0
         looks[:] = 0
         for j in range(3):
@@ -125,6 +160,13 @@ def simulate(B, cost, q, P, heading, tick_off, ent_view, ent_det, ent_pl, ent_x,
             used[a] += 1
             spent += cost[a]
         check_deadlines(k, X, Pm, tl, init, tick_off, ent_pl, ent_x, ent_y, kd_of, conf_idx_of, err, q)
+        if record:
+            for i in range(n_local):
+                if init[i]:
+                    dt = (k - tl[i]) * DT
+                    rec_pos[k, i, 0] = X[i, 0] + X[i, 2] * dt
+                    rec_pos[k, i, 1] = X[i, 1] + X[i, 3] * dt
+                    rec_cov[k, i, 0], rec_cov[k, i, 1], rec_cov[k, i, 2] = pos_cov(Pm[i], dt, q)
         for v in range(N_VIEWS):
             rate[v] += (looks[v] / DT - rate[v]) * (DT / RATE_TAU)
         logmu += PRICE_STEP * (spent - B * DT)

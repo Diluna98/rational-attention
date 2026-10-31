@@ -64,6 +64,28 @@ apparent person height in `config/detector.json`, with misses that persist over 
 Devices: `xavier-nx-10w`, `xavier-nx-20w`, `rtx-4050`, `i3-1315u`; costs: `time` or `energy`; budgets 3.5 and 5
 units/s for every cost table, and also 2.5, 3, 4, 6 and 7 for the energy tables.
 
+## Animation
+
+```bash
+python -m rational_attention animate --days data/days --day 20121202 --budget 5
+```
+
+Opens a window that plays one route in real time (default: the route with the most conflicts on that day).
+
+![Scheduler on one route](docs/animation.gif)
+
+- Map: the robot (black triangle), its route and its three camera regions; a region lights up when the detector
+  processes that camera. Pedestrians are dark grey when a camera can see them and light grey otherwise; an orange edge
+  marks a conflict still ahead. Detections are `+`, the robot's tracks are 2-sigma ellipses, and each conflict is
+  circled at its deadline: green if tracked in time, red if late.
+- Right: each camera's value of a look against the price of a one-camera call, the cameras processed so far, and the
+  price.
+
+Options: `--route N`, `--device`, `--cost`, `--speed 2` (twice real time), `--start 30 --duration 20` (a 20 s
+clip), `--save route.gif` (or `.mp4`, which needs ffmpeg) to write a file instead of opening a window.
+
+## Calibration
+
 The value model and the start prices in `config/` were fitted on the training days. To fit them again:
 
 ```bash
@@ -79,6 +101,7 @@ python -m rational_attention calibrate --days data/days
 | `rational_attention/tracker.py` | Kalman filter and detection updates |
 | `rational_attention/calibration.py` | value model and start prices from the training days |
 | `rational_attention/replay.py` | runs the scheduler over prepared days |
+| `rational_attention/animate.py` | live view of one route |
 | `rational_attention/routes.py` | route sampling, camera visibility, detections, conflicts |
 | `rational_attention/mapping.py` | map, line of sight, route planning graph |
 | `rational_attention/detector.py` | detector model |
